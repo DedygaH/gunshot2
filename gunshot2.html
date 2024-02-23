@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shooting Game</title>
+    <!-- <link rel="stylesheet" href="styles.css" /> -->
+    <style>
+      .name-game {
+        position: absolute;
+        left: 15%;
+        filter: drop-shadow(5px 5px 30px #050133);
+      }
+      #game-container {
+        width: 500px;
+        height: 450px;
+        position: relative;
+        border: 5px solid green;
+      }
+      #startButton {
+        color: blue;
+        font-size: 28px;
+        font-weight: bold;
+      }
+      .target {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        cursor: pointer;
+      }
+
+      @keyframes explode {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.5);
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(2);
+          opacity: 0;
+        }
+      }
+      #cursor {
+        position: absolute;
+        width: 10%;
+      }
+      #pic {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h2 class="name-game">Shooting Game</h2>
+    <div>
+      <label for="difficulty">Difficulty:</label>
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+    <div>
+      <label for="speed">Speed:</label>
+      <select id="speed">
+        <option value="slow">Slow</option>
+        <option value="medium">Medium</option>
+        <option value="fast">Fast</option>
+      </select>
+    </div>
+    <div>
+      <label for="lives">Lives:</label>
+      <select id="lives">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="score">Score:</label>
+      <span id="score">0</span>
+    </div>
+
+    <div id="game-container">
+      <img src="pic.png" alt="pic" id="pic" />
+      <img src="aim*.png" alt="" id="cursor" />
+    </div>
+    <button id="startButton">Start</button>
+    <!-- <script src="app.js"></script> -->
+    <script>
+      const gameContainer = document.getElementById("game-container"); // Получаем элемент контейнера игры из DOM
+      const difficultySelect = document.getElementById("difficulty"); // Получаем элемент выбора сложности из DOM
+      const speedSelect = document.getElementById("speed"); // Получаем элемент выбора скорости из DOM
+      const livesSelect = document.getElementById("lives"); // Получаем элемент выбора количества жизней из DOM
+      const scoreDisplay = document.getElementById("score");
+      const cursor = document.getElementById("cursor"); // Получаем элемент для курсора
+      let score = 0; // Инициализируем переменную для счета очков
+      let lives = parseInt(livesSelect.value); // Инициализируем переменную для количества жизней, преобразовав строковое значение в число
+
+      cursor.id = "cursor";
+      gameContainer.appendChild(cursor); // Добавляем курсор в контейнер игры
+      gameContainer.addEventListener("mousemove", (event) => {
+        const cursorWidth = cursor.offsetWidth;
+        const cursorHeight = cursor.offsetHeight;
+        const containerWidth = gameContainer.offsetWidth;
+        const containerHeight = gameContainer.offsetHeight;
+        let x = event.clientX - cursorWidth / 2;
+        let y = event.clientY - cursorHeight / 2;
+        if (x < 0) {
+          x = 0;
+        } else if (x + cursorWidth >= containerWidth) {
+          x = containerWidth - cursorWidth;
+        }
+        if (y < 0) {
+          y = 0;
+        } else if (y + cursorHeight >= containerHeight) {
+          y = containerHeight - cursorHeight;
+        }
+        cursor.style.left = `${x}px`;
+        cursor.style.top = `${y}px`;
+      });
+
+      function createTarget() {
+        const target = document.createElement("div");
+        target.classList.add("target");
+        const containerWidth = gameContainer.offsetWidth - target.offsetWidth;
+        const containerHeight =
+          gameContainer.offsetHeight - target.offsetHeight;
+        target.style.top = `${Math.floor(Math.random() * containerHeight)}px`;
+        target.style.left = `${Math.floor(Math.random() * containerWidth)}px`;
+
+        const colors = [
+          "red",
+          "green",
+          "blue",
+          "yellow",
+          "pink",
+          "cyan",
+          "orange",
+          "purple",
+        ];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        target.style.backgroundColor = randomColor;
+
+        target.addEventListener("click", hitTarget);
+        gameContainer.appendChild(target);
+
+        const speed = getSpeed();
+        setTimeout(() => {
+          gameContainer.removeChild(target);
+          if (lives > 0) {
+            createTarget();
+            lives--;
+            livesSelect.value = lives;
+          } else {
+            alert(`Игра окончена! Ваш счет: ${score}`);
+            resetGame();
+            score = 0;
+          }
+        }, speed);
+      }
+
+      function getSpeed() {
+        // Функция для получения скорости создания новой мишени в зависимости от выбранной пользователем скорости
+        const speed = speedSelect.value; // Получаем значение выбранной скорости из DOM
+        switch (
+          speed // Определяем скорость в зависимости от значения выбранной скорости
+        ) {
+          case "slow":
+            return 3000;
+          case "medium":
+            return 2000;
+          case "fast":
+            return 1000;
+        }
+      }
+
+      function animateExplosion(target) {
+        let start = null;
+
+        function step(timestamp) {
+          if (!start) start = timestamp;
+          const progress = timestamp - start;
+
+          // Изменяем свойства элемента мишени для создания анимации взрыва
+          target.style.transform = `scale(${1 + progress / 100})`;
+          target.style.opacity = 1 - progress / 100;
+
+          if (progress < 100) {
+            // Если анимация еще не закончилась, вызываем requestAnimationFrame для продолжения анимации
+            requestAnimationFrame(step);
+          } else {
+            // Если анимация закончилась, удаляем элемент мишени из контейнера игры
+            gameContainer.removeChild(target);
+          }
+        }
+
+        // Запускаем анимацию взрыва
+        requestAnimationFrame(step);
+      }
+
+      function hitTarget() {
+        // Функция для обработки попадания в мишень и проигрывания звука выстрела
+        score++; // Увеличиваем количество очков на 1
+        scoreDisplay.textContent = `${score}`; // обновления отображения текущего счета !!!!!!
+        this.removeEventListener("click", hitTarget); // Удаляем обработчик события клика на мишень
+        const target = this;
+        target.classList.add("explode");
+        animateExplosion(target); //  вызов анимации
+        const audio = new Audio("gunshot.mp3"); // Создаем новый объект аудио для проигрывания звука выстрела
+        audio.play(); // Проигрываем звук выстрела
+        setTimeout(() => {
+          gameContainer.removeChild(target); // Удаляем мишень из контейнера игры
+        }, 200);
+        createTarget(); // Создаем первую мишень
+      }
+
+      function resetGame() {
+        // Функция для сброса настроек игры
+        lives = parseInt(livesSelect.value); // Сбрасываем количество жизней, преобразовав строковое значение в число
+        livesSelect.disabled = false; // Разблокируем выбор количества жизней
+      }
+
+      function startGame() {
+        // Функция для начала игры
+        const pic = document.getElementById("pic");
+        pic.style.display = "none"; // Скрываем изображение pic.png
+        resetGame(); // Сбрасываем все настройки игры
+        livesSelect.disabled = true; // Блокируем выбор количества жизней
+        createTarget(); // Создаем первую мишень
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        // Добавляем обработчик события загрузки страницы
+        document
+          .getElementById("startButton")
+          .addEventListener("click", startGame); // Добавляем обработчик события клика на кнопку начала игры
+      });
+    </script>
+  </body>
+</html>
